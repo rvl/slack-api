@@ -65,6 +65,9 @@ data Attachment = Attachment
     , attachmentTs :: Maybe POSIXTime
         -- ^ Display an additional timestamp value as part of the
         -- attachment's footer.
+    , attachmentActions :: [Action]
+        -- ^ Actions such as buttons and menus, allowing for
+        -- <https://api.slack.com/interactive-messages interactive messages>.
     }
 
 data Field = Field
@@ -87,6 +90,44 @@ data AttachmentColor
     | CustomColor T.Text -- hexadecimal RGB colour, eg. CustomColor "#439FE0"
     deriving (Generic)
 
+data Action = Action
+    { actionName :: T.Text
+        -- ^ Returned to your callback URL.
+    , actionText :: T.Text
+        -- ^ User-facing label. Should have a maximum of 30 characters.
+    , actionType :: ActionType
+        -- ^ Whether this action is a button or a menu.
+    , actionValue :: Maybe T.Text
+        -- ^ Provided, along with `actionName`, to your callback URL.
+    , actionStyle :: Maybe ButtonStyle
+        -- ^ How to style the action. Only used for buttons.
+    , actionOptions :: [MenuOption]
+        -- ^ Menu options. Only used for menus.
+    } deriving (Eq, Show, Read, Generic)
+
+data ActionType
+    = ButtonType
+    | MenuType
+    deriving (Eq, Show, Read, Enum, Generic)
+
+data ButtonStyle
+    = DefaultStyle
+    | PrimaryStyle
+    | DangerStyle
+    deriving (Eq, Show, Read, Enum, Generic)
+
+data MenuOption = MenuOption
+    { menuOptionText :: T.Text
+        -- ^ Short, user-facing label. Should have a maximum of 30 characters.
+    , menuOptionValue :: T.Text
+        -- ^ A short string that identifies the option to the application. Up
+        -- to 2000 characters.
+    , menuOptionDescription :: T.Text
+        -- ^ User-facing string with more details about option. Should also
+        -- have at most 30 characters
+    } deriving (Eq, Show, Read, Generic)
+
+
 defaultAttachment :: Attachment
 defaultAttachment = Attachment
         { attachmentFallback = ""
@@ -104,7 +145,19 @@ defaultAttachment = Attachment
         , attachmentFooter = Nothing
         , attachmentFooterIcon = Nothing
         , attachmentTs = Nothing
+        , attachmentActions = []
         }
+
+instance ToJSON ActionType where
+    toEncoding x = toEncoding $ case x of
+        ButtonType -> ("button" :: T.Text)
+        MenuType   -> "select"
+
+instance ToJSON ButtonStyle where
+    toEncoding x = toEncoding $ case x of
+        DefaultStyle -> Nothing
+        PrimaryStyle -> Just ("primary" :: T.Text)
+        DangerStyle  -> Just "danger"
 
 instance ToJSON AttachmentColor where
     toEncoding x = toEncoding $ case x of
@@ -116,5 +169,7 @@ instance ToJSON AttachmentColor where
 
 $(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 7}  ''MessagePayload)
 $(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 4}  ''PingPayload)
+$(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 10} ''MenuOption)
+$(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 6}  ''Action)
 $(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 10} ''Attachment)
 $(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 5}  ''Field)

@@ -2,6 +2,7 @@
 
 * Changed `newtype Time = Time NominalDiffTime` to `newtype Time = Time Int`
 * Changed the fundamental abstraction from SlackBot to SlackHandle
+* Added actions to message attachments.
 
 ## 0.12
 
