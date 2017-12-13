@@ -39,6 +39,7 @@ data Subtype where
   SFileShare :: File -> Bool -> Subtype
   SFileComment :: File -> Comment -> Subtype
   SFileMention :: File -> Subtype
+  SMessageReplied :: SlackTimeStamp -> Subtype
   -- These two subtypes are documented as unstable, so they shouldn't
   -- be used.  See https://api.slack.com/events/message/pinned_item
   -- for more detail and updates.
@@ -75,5 +76,5 @@ subtype s = withObject "subtype" (\v ->
     "file_mention"  -> SFileMention <$> v .: "file"
     "pinned_item"   -> pure SPinnedItem
     "unpinned_item" -> pure SUnpinnedItem
+    "message_replied" -> SMessageReplied <$> ((v .: "message") >>= (.: "thread_ts"))
     _               -> fail $ "Unrecognised subtype: " ++ s)
-
