@@ -68,6 +68,9 @@ data Attachment = Attachment
     , attachmentActions :: [Action]
         -- ^ Actions such as buttons and menus, allowing for
         -- <https://api.slack.com/interactive-messages interactive messages>.
+    , attachmentCallbackId :: Maybe T.Text
+        -- ^ An identifier for the set of actions in an interactive attachment.
+        -- It is sent back to the action URL when an action is invoked.
     }
 
 data Field = Field
@@ -146,6 +149,7 @@ defaultAttachment = Attachment
         , attachmentFooterIcon = Nothing
         , attachmentTs = Nothing
         , attachmentActions = []
+        , attachmentCallbackId = Nothing
         }
 
 instance ToJSON ActionType where
