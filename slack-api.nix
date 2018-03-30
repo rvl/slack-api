@@ -1,11 +1,11 @@
-{ cabal, aeson, errors, HsOpenSSL, ioStreams, lens, lensAeson
-, monadLoops, mtl, network, opensslStreams, text, time
-, transformers, websockets, wreq
+{ mkDerivation, aeson, base, bytestring, containers, errors
+, hashable, io-streams, lens, lens-aeson, monad-loops, mtl, network
+, network-uri, scientific, stdenv, text, time, time-locale-compat
+, tls, transformers, websockets, wreq, wuss
 }:
 
-cabal.mkDerivation (self:
 let
-  lib         = self.stdenv.lib;
+  lib         = stdenv.lib;
   isWithin    = p: dirPath: lib.hasPrefix (toString dirPath) (toString p);
   cabalFilter = path: type: (let pathBaseName = baseNameOf path; in
                                !(lib.hasSuffix "~" pathBaseName) &&
@@ -19,21 +19,20 @@ let
                                    false
                                )
                             );
-in {
+in
+
+mkDerivation {
   pname = "slack-api";
-
-  version = "0.1.3";
+  version = "0.12";
   src = builtins.filterSource cabalFilter ./.;
-  #
-  # sha256 = "12f9w8s5ir3skdr2dhlvr94f3sfbqjky5ppc943wj60sz0s7lha1";
-
-  buildDepends = [
-    aeson errors HsOpenSSL ioStreams lens lensAeson monadLoops mtl
-    network opensslStreams text time transformers websockets wreq
+  isLibrary = true;
+  isExecutable = true;
+  libraryHaskellDepends = [
+    aeson base bytestring containers errors hashable io-streams lens
+    lens-aeson monad-loops mtl network network-uri scientific text time
+    time-locale-compat tls transformers websockets wreq wuss
   ];
-  meta = {
-    description = "Bindings for the Slack RTM API";
-    license = self.stdenv.lib.licenses.mit;
-    platforms = self.ghc.meta.platforms;
-  };
-})
+  testHaskellDepends = [ base ];
+  description = "Bindings to the Slack RTM API";
+  license = stdenv.lib.licenses.mit;
+}
