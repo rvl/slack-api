@@ -13,6 +13,7 @@ import Web.Slack.Types.Item
 import Web.Slack.Types.Comment
 import Web.Slack.Types.Error
 import Web.Slack.Types.Event.Subtype
+import Web.Slack.Types.Message
 import Web.Slack.Types.Time
 import Web.Slack.Types.Presence
 
@@ -23,6 +24,10 @@ import Control.Lens.TH
 import Control.Applicative
 import Control.Monad
 import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Time.Clock.POSIX (POSIXTime)
+import Network.URI
+import Safe (readMay)
 import Prelude
 
 type Domain = Text
@@ -94,9 +99,21 @@ data Event where
   PinAdded :: Event
   PinRemoved :: Event
   NoEvent :: Event
+  -- Events API
+  Challenge :: Text -> Event -- ^ Sent by Slack when adding an integration
+  InteractiveMessage :: Interaction -> Event -- ^ User clicks on an action button
   -- Parsing failing of an event
   UnknownEvent :: Value -> Event
   deriving (Show)
+
+data EventMessage = EventMessage
+  { eventMessageTimestamp :: POSIXTime
+  , eventMessageAttachments :: [Attachment]
+  , eventMessageText :: Text
+  , eventMessageUser :: UserId
+  , eventMessageType :: Text
+  , eventMessageBotId :: BotId
+  } deriving Show
 
 type Pref = (Text, Value)
 
@@ -189,9 +206,41 @@ parseType o@(Object v) typ =
       "desktop_notification" -> DesktopNotification <$> v .: "msg"
       "pin_added" -> pure PinAdded
       "pin_removed" -> pure PinRemoved
+      "url_verification" -> Challenge <$> v .: "challenge"
+      "interactive_message" -> InteractiveMessage <$> parseJSON o
       _ -> return $ UnknownEvent o
 parseType _ _ = error "Expecting object"
 
+-- | The contents of an action message
+data Interaction = Interaction
+  { interactionURI        :: URI
+  , interactionActions    :: [Action]
+  , interactionMessage    :: Maybe EventMessage
+  , interactionCallbackId :: Text
+  , interactionTriggerId  :: TriggerId
+  , interactionUser       :: UserInfo
+  } deriving Show
+
+instance FromJSON Interaction where
+  parseJSON = withObject "InteractiveMessage" $ \v ->
+    Interaction <$> v .: "response_url"
+                <*> v .: "actions"
+                <*> v .:? "original_message"
+                <*> v .: "callback_id"
+                <*> v .: "trigger_id"
+                <*> parseUserInfo v
+
+parseUserInfo :: Object -> Parser UserInfo
+parseUserInfo o = do
+  u <- o .: "user"
+  t <- o .: "team"
+  UserInfo <$> u .: "id" <*> u .: "name" <*> t .: "id" <*> t .: "domain"
+
+instance FromJSON URI where
+  parseJSON = withText "Absolute URI" $ \t ->
+    case parseAbsoluteURI (T.unpack t) of
+      Just u -> pure u
+      Nothing -> error "Could not parse absolute URI reference"
 
 data Submitter = UserComment UserId | BotComment BotId | System deriving (Show, Eq)
 
@@ -204,6 +253,19 @@ makeLenses ''ChannelRenameInfo
 
 instance FromJSON ChannelRenameInfo where
   parseJSON = withObject "ChannelRenameInfo" (\o -> ChannelRenameInfo <$> o .: "id" <*> o .: "name" <*> o .: "created")
+
+instance FromJSON EventMessage where
+  parseJSON = withObject "EventMessage" $ \o ->
+    EventMessage <$> ts o <*> o .: "attachments" <*> o .: "text" <*> o .: "user" <*> o .: "type" <*> o .: "bot_id"
+    where
+      ts o = (o .: "ts") <|> ((o .: "ts") >>= str)
+      str = withText "timestamp string" $ \s ->
+        case (readMay (T.unpack s) :: Maybe Double) of
+          Just ts -> pure (realToFrac ts)
+          Nothing -> error "couldn't parse timestamp string as double"
+
+instance ToJSON EventMessage where
+  toJSON (EventMessage ts as text user t bot) = object [ "ts" .= ts, "attachments" .= as, "text" .= text, "user" .= user, "type" .= t, "bot_id" .= bot ]
 
 
 makePrisms ''Event

@@ -54,6 +54,13 @@ module Web.Slack
     , sendPing
     , addReaction
 
+      -- * Creating Events API applications
+    , EventsApplication(..)
+    , CommandRequest(..)
+    , EventResponse(..)
+    , defaultEventsApplication
+    , eventsApplication
+
       -- * Type re-exports
     , SlackConfig(..)
     , SlackSession(..)
@@ -72,6 +79,7 @@ import qualified Network.URI as URI
 import qualified Network.WebSockets as WS
 import Web.Slack.Types
 import Web.Slack.WebAPI
+import Web.Slack.EventsAPI
 import Wuss
 
 -- | This library exposes a simple handle-based API. A `SlackHandle` is

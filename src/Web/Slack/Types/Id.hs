@@ -7,6 +7,7 @@ module Web.Slack.Types.Id
     CommentId,
     IMId,
     TeamId,
+    TriggerId,
     Id(..),
     getId
   ) where
@@ -17,7 +18,7 @@ import Control.Lens.TH
 import Data.Hashable
 import GHC.Generics
 
-data FieldType = TUser | TBot | TChannel | TFile | TComment | TIM | TTeam deriving (Eq, Show)
+data FieldType = TUser | TBot | TChannel | TFile | TComment | TIM | TTeam | TTrigger deriving (Eq, Show)
 
 newtype Id (a :: FieldType) = Id { _getId :: Text } deriving (Show, Eq, Ord, Generic)
 
@@ -30,12 +31,13 @@ instance FromJSON (Id a) where
 
 instance Hashable (Id a)
 
-type UserId    = Id 'TUser
-type BotId     = Id 'TBot
-type ChannelId = Id 'TChannel
-type FileId    = Id 'TFile
-type CommentId = Id 'TComment
-type IMId      = Id 'TIM
-type TeamId    = Id 'TTeam
+type UserId     = Id 'TUser
+type BotId      = Id 'TBot
+type ChannelId  = Id 'TChannel
+type FileId     = Id 'TFile
+type CommentId  = Id 'TComment
+type IMId       = Id 'TIM
+type TeamId     = Id 'TTeam
+type TriggerId  = Id 'TTrigger
 
 makeLenses ''Id

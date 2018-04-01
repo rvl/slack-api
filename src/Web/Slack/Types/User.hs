@@ -91,3 +91,11 @@ instance FromJSON Profile where
                           <*> v "image_48" <*> v "image_72" <*> v "image_192")
 
 type Username = Text
+
+-- | Brief pair of user + team domain
+data UserInfo = UserInfo
+  { userInfoUserId     :: UserId
+  , userInfoUserName   :: Username
+  , userInfoTeamId     :: TeamId
+  , userInfoTeamDomain :: Text
+  } deriving (Show, Eq)

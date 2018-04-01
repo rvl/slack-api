@@ -1,14 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Web.Slack.Types.Message where
 
 import Data.Aeson
 import Data.Aeson.TH
+import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import Data.Time.Clock.POSIX
-import GHC.Generics
 import Web.Slack.Types.Base
 import Web.Slack.Types.Id
 import Web.Slack.Utils
@@ -18,13 +18,13 @@ data MessagePayload = MessagePayload
     , messageType    :: T.Text
     , messageChannel :: ChannelId
     , messageText    :: T.Text
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 data PingPayload = PingPayload
     { pingId        :: Int
     , pingType      :: T.Text
     , pingTimestamp :: Int
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 data Attachment = Attachment
     { attachmentFallback :: T.Text
@@ -71,7 +71,7 @@ data Attachment = Attachment
     , attachmentCallbackId :: Maybe T.Text
         -- ^ An identifier for the set of actions in an interactive attachment.
         -- It is sent back to the action URL when an action is invoked.
-    }
+    } deriving (Show, Eq)
 
 data Field = Field
     { fieldTitle :: Maybe T.Text
@@ -83,7 +83,7 @@ data Field = Field
     , fieldShort :: Bool
         -- ^ Whether the value is short enough to be displayed side-by-side
         -- with other values.
-    }
+    } deriving (Show, Eq)
 
 data AttachmentColor
     = DefaultColor       -- grey
@@ -91,7 +91,7 @@ data AttachmentColor
     | WarningColor       -- yellow
     | DangerColor        -- red
     | CustomColor T.Text -- hexadecimal RGB colour, eg. CustomColor "#439FE0"
-    deriving (Generic)
+    deriving (Show, Eq)
 
 data Action = Action
     { actionName :: T.Text
@@ -106,18 +106,18 @@ data Action = Action
         -- ^ How to style the action. Only used for buttons.
     , actionOptions :: [MenuOption]
         -- ^ Menu options. Only used for menus.
-    } deriving (Eq, Show, Read, Generic)
+    } deriving (Eq, Show, Read)
 
 data ActionType
     = ButtonType
     | MenuType
-    deriving (Eq, Show, Read, Enum, Generic)
+    deriving (Eq, Show, Read, Enum)
 
 data ButtonStyle
     = DefaultStyle
     | PrimaryStyle
     | DangerStyle
-    deriving (Eq, Show, Read, Enum, Generic)
+    deriving (Eq, Show, Read, Enum)
 
 data MenuOption = MenuOption
     { menuOptionText :: T.Text
@@ -128,7 +128,7 @@ data MenuOption = MenuOption
     , menuOptionDescription :: T.Text
         -- ^ User-facing string with more details about option. Should also
         -- have at most 30 characters
-    } deriving (Eq, Show, Read, Generic)
+    } deriving (Eq, Show, Read)
 
 
 defaultAttachment :: Attachment
@@ -153,27 +153,80 @@ defaultAttachment = Attachment
         }
 
 instance ToJSON ActionType where
-    toEncoding x = toEncoding $ case x of
-        ButtonType -> ("button" :: T.Text)
+    toJSON x = String $ case x of
+        ButtonType -> "button"
         MenuType   -> "select"
 
+instance FromJSON ActionType where
+  parseJSON = withText "ActionType" $ \case
+    "button" -> pure ButtonType
+    "select" -> pure MenuType
+    t -> fail $ "Unknown action type: " ++ T.unpack t
+
 instance ToJSON ButtonStyle where
-    toEncoding x = toEncoding $ case x of
-        DefaultStyle -> Nothing
-        PrimaryStyle -> Just ("primary" :: T.Text)
-        DangerStyle  -> Just "danger"
+    toJSON x = String $ case x of
+        DefaultStyle -> ""
+        PrimaryStyle -> "primary"
+        DangerStyle  -> "danger"
+
+instance FromJSON ButtonStyle where
+    parseJSON v = (parseJSON v :: Parser (Maybe T.Text)) >>= \case
+      Nothing -> pure DefaultStyle
+      Just "" -> pure DefaultStyle
+      Just "primary" -> pure PrimaryStyle
+      Just "danger" -> pure DangerStyle
+      Just s -> fail $ "Unknown button style: " ++ T.unpack s
 
 instance ToJSON AttachmentColor where
-    toEncoding x = toEncoding $ case x of
-        DefaultColor  -> Nothing
-        GoodColor     -> Just "good"
-        WarningColor  -> Just "warning"
-        DangerColor   -> Just "danger"
-        CustomColor c -> Just c
+    toJSON x = String $ case x of
+        DefaultColor  -> ""
+        GoodColor     -> "good"
+        WarningColor  -> "warning"
+        DangerColor   -> "danger"
+        CustomColor c -> c
 
-$(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 7}  ''MessagePayload)
-$(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 4}  ''PingPayload)
-$(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 10} ''MenuOption)
+instance FromJSON AttachmentColor where
+    parseJSON v = (parseJSON v :: Parser (Maybe T.Text)) >>= \case
+      Just "good" -> pure GoodColor
+      Just "warning" -> pure WarningColor
+      Just "danger" -> pure DangerColor
+      Just c -> pure $ CustomColor c
+      Nothing -> pure DefaultColor
+
+instance FromJSON Attachment where
+  parseJSON = withObject "Attachment" $ \o ->
+    Attachment
+        <$> o .:? "fallback" .!= ""
+        <*> o .:? "color" .!= DefaultColor
+        <*> o .:? "pretext"
+        <*> o .:? "author_name"
+        <*> o .:? "author_link"
+        <*> o .:? "author_icon"
+        <*> o .:? "title"
+        <*> o .:? "title_link"
+        <*> o .:? "text"
+        <*> o .:? "fields" .!= []
+        <*> o .:? "image_url"
+        <*> o .:? "thumb_url"
+        <*> o .:? "footer"
+        <*> o .:? "footer_icon"
+        <*> o .:? "ts"
+        <*> o .:? "actions" .!= []
+        <*> o .:? "callback_id"
+
+instance FromJSON Action where
+  parseJSON = withObject "Action" $ \o ->
+    Action
+      <$> o .: "name"
+      <*> o .:? "text" .!= ""
+      <*> o .:? "type" .!= ButtonType
+      <*> o .:? "value"
+      <*> o .:? "style"
+      <*> o .:? "options" .!= []
+
+$(deriveJSON defaultOptions {fieldLabelModifier = toSnake . drop 7}  ''MessagePayload)
+$(deriveJSON defaultOptions {fieldLabelModifier = toSnake . drop 4}  ''PingPayload)
+$(deriveJSON defaultOptions {fieldLabelModifier = toSnake . drop 10} ''MenuOption)
 $(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 6}  ''Action)
 $(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 10} ''Attachment)
-$(deriveToJSON defaultOptions {fieldLabelModifier = toSnake . drop 5}  ''Field)
+$(deriveJSON defaultOptions {fieldLabelModifier = toSnake . drop 5}  ''Field)
