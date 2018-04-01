@@ -1,2 +1,6 @@
 .stack-work
 stack.yaml
+
+.cabal-sandbox/
+cabal.sandbox.config
+dist/

@@ -1,4 +1,8 @@
-{-# LANGUAGE DataKinds, KindSignatures, TemplateHaskell, DeriveGeneric #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE KindSignatures  #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Web.Slack.Types.Id
   ( UserId,
     BotId,
@@ -8,17 +12,18 @@ module Web.Slack.Types.Id
     IMId,
     TeamId,
     TriggerId,
+    GroupId,
     Id(..),
     getId
   ) where
 
-import Data.Aeson
-import Data.Text (Text)
 import Control.Lens.TH
+import Data.Aeson
 import Data.Hashable
+import Data.Text (Text)
 import GHC.Generics
 
-data FieldType = TUser | TBot | TChannel | TFile | TComment | TIM | TTeam | TTrigger deriving (Eq, Show)
+data FieldType = TUser | TBot | TChannel | TFile | TComment | TIM | TTeam | TGroup | TTrigger deriving (Eq, Show)
 
 newtype Id (a :: FieldType) = Id { _getId :: Text } deriving (Show, Eq, Ord, Generic)
 
@@ -38,6 +43,7 @@ type FileId     = Id 'TFile
 type CommentId  = Id 'TComment
 type IMId       = Id 'TIM
 type TeamId     = Id 'TTeam
+type GroupId    = Id 'TGroup
 type TriggerId  = Id 'TTrigger
 
 makeLenses ''Id
