@@ -89,6 +89,7 @@ data Event where
   Pong :: Time -> Event
   ReconnectUrl :: URL -> Event
   TeamMigrationStarted :: Event
+  DesktopNotification :: Text -> Event
   -- Unstable
   PinAdded :: Event
   PinRemoved :: Event
@@ -185,6 +186,7 @@ parseType o@(Object v) typ =
       "pong" -> Pong <$> v .: "timestamp"
       "reconnect_url" -> ReconnectUrl <$> v .: "url"
       "team_migration_started" -> pure TeamMigrationStarted
+      "desktop_notification" -> DesktopNotification <$> v .: "msg"
       "pin_added" -> pure PinAdded
       "pin_removed" -> pure PinRemoved
       _ -> return $ UnknownEvent o
