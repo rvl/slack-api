@@ -47,6 +47,7 @@ library
     , Web.Slack.Types.Event
     , Web.Slack.Types.Event.Subtype
     , Web.Slack.Types.File
+    , Web.Slack.Types.Format
     , Web.Slack.Types.IM
     , Web.Slack.Types.Id
     , Web.Slack.Types.Item
@@ -65,6 +66,7 @@ library
   build-depends:
       -- corePackages (see [cabal2nix/src/Cabal2Nix/CorePackages.hs])
       base >= 4.4 && < 5
+    , attoparsec >= 0.13 && < 0.14
     , bytestring >= 0.9.1
     , containers >= 0.4
       -- Normal Packages
