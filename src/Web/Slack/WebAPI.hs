@@ -15,6 +15,7 @@ module Web.Slack.WebAPI
     , getGroupedUsers
     , getUsers
     , getUser
+    , getChannel
     ) where
 
 import Control.Lens hiding ((??))
@@ -159,6 +160,18 @@ getUser conf (Id uid) = do
         (W.param "user" .~ [uid])
     user <- resp ^? key "user" ?? "No user in response"
     fromJSON' user
+
+getChannel
+    :: (MonadError T.Text m, MonadIO m)
+    => SlackConfig
+    -> ChannelId
+    -> m Channel
+getChannel conf (Id cid) = do
+  resp <- makeSlackCall conf "channels.info" $
+       (W.param "channel" .~ [cid])
+  channel <- resp ^? key "channel" ?? "No channel in response"
+  fromJSON' channel
+
 -------------------------------------------------------------------------------
 -- Helpers
 
