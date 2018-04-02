@@ -6,7 +6,10 @@ module Web.Slack.Types.Format
   ( Format(..)
   , format
   , unformat
+  , unformatOnlyText
   , formatParser
+  , isMentioned
+  , mentionUser
   ) where
 
 import Data.Text (Text)
@@ -43,6 +46,10 @@ unformat1 (FormatUser (Id u) t)    = unformatEntity "@" u t
 unformat1 (FormatChannel (Id c) t) = unformatEntity "#" c t
 unformat1 (FormatLink url t)       = unformatEntity "" url t
 unformat1 (FormatString t)         = escape t
+
+-- | Only the text content of a message -- no mentions, urls, etc.
+unformatOnlyText :: [Format] -> Text
+unformatOnlyText msg = mconcat [escape t | FormatString t <- msg]
 
 -- | Parse message text from slack into a Format tokens. If parsing
 -- fails, an empty list is returned.
@@ -86,3 +93,11 @@ formatEntity p = ((,) <$> (char '<' *> string p *> entityId) <*> linkText) <* ch
     entityId = T.pack <$> many1 (satisfy (notInClass "|>"))
     linkText :: Parser (Maybe Text)
     linkText = Just . T.pack <$> (char '|' *> many1 (notChar '>')) <|> pure Nothing
+
+-- | Look in message to see if a user is mentioned
+isMentioned :: UserId -> [Format] -> Bool
+isMentioned uid msg = or [mention == uid | FormatUser mention _ <- msg]
+
+-- | Prefixes message text with @user
+mentionUser :: UserId -> [Format] -> [Format]
+mentionUser uid msg = (FormatUser uid Nothing:msg)
